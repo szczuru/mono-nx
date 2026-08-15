@@ -1,0 +1,27 @@
+name: Build mono-nx
+
+on:
+  workflow_dispatch: 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag monobuild
+    - name: Clone dotnet_runtime fork
+      run: git clone --depth=1 -b libnx https://github.com/exelix11/dotnet_runtime.git
+    - name: Build via docker
+      run: docker run --rm -it --entrypoint /bin/bash -v $(pwd):/mono-nx monobuild ./github_actions_build.sh
+    - name: Upload SDK artifact
+      uses: actions/upload-artifact@v7.0.1
+      with:
+        archive: false
+        path: mono-nx-sdk-linux-x64.zip
+    - name: Upload demo release
+      uses: actions/upload-artifact@v7.0.1
+      with:
+        archive: false
+        path: sd_files.zip
+      
