@@ -41,6 +41,7 @@ struct AppConfiguration
 
     bool force_console_init;
     bool exit_process_on_end;
+    bool force_full_application;
 };
 
 extern struct AppConfiguration g_config;

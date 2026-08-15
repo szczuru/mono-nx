@@ -5,6 +5,7 @@
 
 static PadState pad;
 static bool using_console = false;
+static bool is_applet = false;
 
 static pthread_mutex_t sockets_mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile bool using_sockets = false;
@@ -105,15 +106,18 @@ static bool try_show_error_applet(const char* title, const char* message)
 
 void fatal_error(const char *message)
 {
-    // Happy code path: print to debugger and show fatal error applet
-    if (message && io_has_stdio_redirection())
-        io_debugf("%s", message);
-
-    if (try_show_error_applet("Fatal error occurred in mono-nx, open details for more information.", message))
+    // Happy code path: print to debugger and show fatal error applet. This doesn't seem to work in applet mode.
+    if (!is_applet)
     {
-        io_debugf("Fatal error applet shown");
-        application_force_exit();
-        svcExitProcess(); // For good measure but likely to be optimized out
+        if (message && io_has_stdio_redirection())
+            io_debugf("%s", message);
+
+        if (try_show_error_applet("Fatal error occurred in mono-nx, open details for more information.", message))
+        {
+            io_debugf("Fatal error applet shown");
+            application_force_exit();
+            svcExitProcess(); // For good measure but likely to be optimized out
+        }
     }
 
     // In case the error applet failed try to print to the console and wait for user input to exit, in practice this might not work nicely:
@@ -142,6 +146,7 @@ void fatal_error(const char *message)
             svcSleepThread(1000000);
     }
 
+    application_force_exit();
     svcExitProcess();
 }
 
@@ -217,6 +222,8 @@ static int handle_ini_line(void *user, const char *section, const char *name, co
         pconfig->force_console_init = (strcmp(value, "true") == 0);
     else if (MATCH("nx", "exit_process_on_end"))
         pconfig->exit_process_on_end = (strcmp(value, "true") == 0);
+    else if (MATCH("nx", "force_full_application"))
+        pconfig->force_full_application = (strcmp(value, "true") == 0);
     else
     {
         return 0; /* unknown section/name, error */
@@ -239,6 +246,21 @@ bool application_initialize(const char* configFile)
         io_debugf("Can't load app config from %s", configFile);
         fatal_error("Can't load app config");
         return false;
+    }
+    
+    // Do this early so IO redirection doesn't kick off and we're sure that we can show a console error message if needed.
+    if (g_config.force_full_application)
+    {
+        AppletType at = appletGetAppletType();
+        if (at != AppletType_Application && at != AppletType_SystemApplication)
+        {
+            is_applet = true;
+
+            fatal_error("This application can't run in applet mode. Relaunch with title takeover (Launch a game while pressing R).\n\n"
+                "When this application is launched in applet mode via the album icon it can use less memory and this is not supported. Press R while launching a game from the home menu to start the homebrew menu in full application mode where all of the system memory is available.\n");
+
+            return false;
+        }
     }
 
     if (g_config.mono_runtime_logging)
