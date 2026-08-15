@@ -13,7 +13,7 @@ jobs:
     - name: Clone dotnet_runtime fork
       run: git clone --depth=1 -b libnx https://github.com/exelix11/dotnet_runtime.git
     - name: Build via docker
-      run: docker run --rm -it --entrypoint /bin/bash -v $(pwd):/mono-nx monobuild ./github_actions_build.sh
+      run: docker run --rm --entrypoint /bin/bash -v $(pwd):/mono-nx monobuild ./github_actions_build.sh
     - name: Upload SDK artifact
       uses: actions/upload-artifact@v7.0.1
       with:
