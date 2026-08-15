@@ -53,6 +53,8 @@ void application_configure_mono();
 
 void application_terminate();
 
+void application_force_exit();
+
 void application_chdir_to_assembly(const char* path);
 
 void input_ensure_init();

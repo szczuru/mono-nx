@@ -83,9 +83,41 @@ void console_update()
         consoleUpdate(NULL);
 }
 
+static bool try_show_error_applet(const char* title, const char* message)
+{
+    ErrorApplicationConfig arg = {0};    
+    Result rc = errorApplicationCreate(&arg, title, message);
+    if (R_FAILED(rc))
+    {
+        io_debugf("Failed to create error applet config: %08X", rc);
+        return false;
+    }
+
+    rc = errorApplicationShow(&arg);
+    if (R_FAILED(rc))
+    {
+        io_debugf("Failed to show error applet: %08X", rc);
+        return false;
+    }
+    
+    return true;
+}
+
 void fatal_error(const char *message)
 {
-    // If the guest app was using SDL console init will fail and vice versa.
+    // Happy code path: print to debugger and show fatal error applet
+    if (message && io_has_stdio_redirection())
+        io_debugf("%s", message);
+
+    if (try_show_error_applet("Fatal error occurred in mono-nx, open details for more information.", message))
+    {
+        io_debugf("Fatal error applet shown");
+        application_force_exit();
+        svcExitProcess(); // For good measure but likely to be optimized out
+    }
+
+    // In case the error applet failed try to print to the console and wait for user input to exit, in practice this might not work nicely:
+    // If the guest app was using SDL or OpenGL console init will fail and vice versa.
     // In case of a fatal error we might get stuck on a black screen.
     console_ensure_init();
 
@@ -276,9 +308,6 @@ void application_configure_mono()
     mono_install_unhandled_exception_hook(Mono_unhandledExceptionHook, NULL);
 }
 
-// Internal libnx symbol
-u32 __nx_applet_exit_mode = 0;
-
 void application_terminate()
 {
     io_debugf("Terminating application");
@@ -309,11 +338,20 @@ void application_terminate()
 
     if (g_config.exit_process_on_end) 
     {
-        // This forces libnx to always use applet exit + svcExitProcess
-        __nx_applet_exit_mode = 1;
-        // Terminate cleanly-enough
-        exit(0);
+        application_force_exit();
     }
+}
+
+// Internal libnx symbol
+u32 __nx_applet_exit_mode = 0;
+
+void application_force_exit()
+{
+    // This forces libnx to always use applet exit + svcExitProcess
+    // Just calling svcExitProcess() will show an application error message while this exits "cleanly"
+    __nx_applet_exit_mode = 1;
+    // Terminate cleanly-enough
+    exit(0);
 }
 
 void application_chdir_to_assembly(const char* path)
