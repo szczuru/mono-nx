@@ -127,6 +127,8 @@ void fatal_error(const char *message)
     // In case of a fatal error we might get stuck on a black screen.
     console_ensure_init();
 
+    io_debugf("--- Fatal error ---");
+
     if (message)
         io_debugf("%s", message);
 
@@ -252,14 +254,15 @@ bool application_initialize(const char* configFile)
         return false;
     }
     
+    AppletType at = appletGetAppletType();
+    if (at != AppletType_Application && at != AppletType_SystemApplication)
+        is_applet = true;
+
     // Do this early so IO redirection doesn't kick off and we're sure that we can show a console error message if needed.
     if (g_config.force_full_application)
     {
-        AppletType at = appletGetAppletType();
-        if (at != AppletType_Application && at != AppletType_SystemApplication)
+        if (is_applet)
         {
-            is_applet = true;
-
             fatal_error("This application can't run in applet mode. Relaunch with title takeover (Launch a game while pressing R).\n\n"
                 "When this application is launched in applet mode via the album icon it can use less memory and this is not supported. Press R while launching a game from the home menu to start the homebrew menu in full application mode where all of the system memory is available.\n");
 
