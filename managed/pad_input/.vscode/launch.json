@@ -1,0 +1,14 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			// Using the mono mono soft debugger it's possible to debug code running on the console.
+			// It requires this folder to be open in vscode (or else soure path resolution will not work), the pdb file to be present and the mono debug vs code extension (NOT the .net one)
+			"name": "Attach",
+			"type": "mono",
+			"request": "attach",
+			"address": "192.168.1.6",
+			"port": 55555
+		}
+	]
+}

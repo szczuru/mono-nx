@@ -79,6 +79,8 @@ LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*
 
 AOT_FILES := $(wildcard $(TOPDIR)/output/*.o)
 
+# Note that AOT build uses debugger-stub-static.a instead of debugger-static.a meaning it does not support debugging. For AOT debugging we also need to ask the AOT compiler to produce debuggable code.
+
 LIBS	:=  \
 			$(AOT_FILES) \
 			$(MONO_NX_ROOT)/artifacts/bin/native/net9.0-libnx-Debug-arm64/libSystem.IO.Compression.Native.a \

@@ -91,7 +91,7 @@ LIBS	:=  \
 			$(ICU_NX_INSTALL_DIR)/lib/libicuuc.a \
 			$(ICU_NX_INSTALL_DIR)/lib/libicudata.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmonosgen-2.0.a \
-			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-debugger-stub-static.a \
+			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-debugger-static.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-diagnostics_tracing-stub-static.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-hot_reload-stub-static.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-marshal-ilgen-static.a \

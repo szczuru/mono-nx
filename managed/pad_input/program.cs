@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 // This is a workaround for an issue in the interpreter builds. It should not affect this specific program but it's left here as a reference. See the writeup for more info.
 AppContext.SetSwitch("System.Resources.UseSystemResourceKeys", true);
 
+#pragma warning disable CA1418 // Of course, this SDK doesn't know about our fork 
 if (!OperatingSystem.IsOSPlatform("libnx"))
 { 
 	Console.WriteLine("This example is only for mono-nx");
@@ -21,6 +23,10 @@ while (LibnxApplet.appletMainLoop())
 
 	if (pad.ButtonsDown.HasFlag(HidNpadButton.Plus))
 		break;
+
+	// Debugging example: open this folder in vscode with the mono debug extension and attach to it!
+	if (pad.ButtonsDown.HasFlag(HidNpadButton.Minus))
+		Debugger.Break();
 
 	// The console class is not implemented so Console.Clear() will throw NotImplementedException
 	// However you can manually use terminal escape codes to clear the screen
