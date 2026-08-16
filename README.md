@@ -19,20 +19,19 @@ While a few things do work this at the proof-of-concept stage with minimal testi
 - Most of filesystem APIs
 - Sockets and http-only support for `HttpClient`
 - .NET wrappers for SDL2 and [dear imgui](https://github.com/ocornut/imgui) which are included as static libraries
-- The interpreter seems rather stable even when running more complex programs, I did not test the AOT builds as much
 - Unit tests with XHarness (some dotnet repo tests are even passing!)
+
+Overall both the interpreter and AOT seem rather stable and can run complex programs or games.
 
 ## What does not work
 
 - HTTPS and most of `System.Security` doesn't work because we have no openssl port on switch
 - Arbitrary P/Invoke doesn't work due to the lack of dynamic linking, all native function entrypoints must be defined beforehand and statically linked
-- Any other OS-dependant API that was not mentioned previously will likely not work because it was not explicitly implemented. Examples are `Console.Read`, `Console.Clear`, `Process`, `WinForms` and many more.
-
-Also, exiting the interpreter and launching another dll or sometimes homebrew in the same hbmenu session will eventually crash. I'm not sure why this happens, historically mono has had problems [cleaning up resources](https://github.com/mono/mono/issues/20191) but it could also be an issue related to the homebrew environment. I tried to do [some debugging](https://github.com/exelix11/mono-nx/blob/master/notes/writeup.md#the-smoke-test) but ultimately my workaround is to just terminate the process on exit.
+- Any other OS-dependant API that was not mentioned previously will likely not work because it was not explicitly implemented. Examples are `Console.Read`, `Console.Clear`, `Process`, `WinForms`, Unity and many more.
 
 ## Release content
 
-The `mono-interpreter.zip` release contains the mono interpreter, all the dotnet runtime libraries and the file .dll/.exe file association for hbmenu allowing you to copy .net dll programs to your switch folder and running them directly. 
+The `sd_files.zip` release contains the mono interpreter, all the dotnet runtime libraries and the file .dll/.exe file association for hbmenu allowing you to copy .net dll programs to your switch folder and running them directly. 
 
 The following pre-built examples are included:
 - aot_example.nro is a fully self-contained AOT-complied C# application. It generates a random number and asks you to guess it
@@ -45,7 +44,9 @@ The following pre-built examples are included:
 
 If you want to try making a switch homebrew in C# you can follow the examples in the `managed/` folder, you can build them using the normal dotnet 9.0 sdk for linux or windows and then copy the final dll files to your console.
 
-You will probably want to setup one of the logging options in [config.ini](sd_files/mono/config.ini) to catch unhandled exceptions. DllImport/PInvoke for functions that are not statically defined in [dl_shim.c](native/shared/dl_shim.c) requires to use a custom build of the interpreter or it will not work.
+You will probably want to setup one of the logging options in [config.ini](sd_files/mono/config.ini) to catch unhandled exceptions.
+
+DllImport/PInvoke for functions that are not statically defined in [dl_shim.c](native/shared/dl_shim.c) requires to use a custom build of the interpreter, in such cases you should fork the `native/` folder and add your external libraries to a dl_shim file, then build the NRO. For this you will need the mono static libraries distributed as part of the SDK release.
 
 AOT requires [additional steps](notes/aot.md)
 
@@ -54,7 +55,7 @@ AOT requires [additional steps](notes/aot.md)
 
 # Building
 
-Mono gets statically linked to our interpreter and aot NROs, this means before you're able to build them you need your own local dotnet_runtime build. The build steps are a little convoluted, I tried to split everything to its own bash script so it should be easier to understand what's needed for what.
+Mono gets statically linked to our interpreter and aot binaries, this means before you're able to build them you need your own local dotnet_runtime build. The build steps are a little convoluted, I tried to split everything to its own bash script so it should be easier to understand what's needed for what.
 
 On a default ubuntu image you will need to manually install devkita64, CMake 3.20 or higher, libclang and dotnet-sdk-9.0. On other distros refer to the documentation on the dotnet/runtime repo. For your convenience I prepared a docker container which already has all the required components. You can enter the docker environment using:
 
@@ -65,7 +66,7 @@ docker run --rm -it -v $(pwd):/mono-nx monobuild
 
 ## Prebuilt SDK
 
-Now, if you feel lazy and bold at the same time you can try the [prebuilt sdk release](https://github.com/exelix11/mono-nx/releases/tag/rel-1). This is produced by the `gather_sdk.sh` script by grabbing only the final headers and static libraries needed for building the nros. Extract it in the repo root and lets you skip building the dotnet runtime repo. However I don't think it will work across toolchain upgrades, this means you must use the same docker container I used when I built the zip since it pins the toolchain version.
+Now, if you feel lazy and bold at the same time you can try the [prebuilt sdk release](https://github.com/exelix11/mono-nx/releases/). This is produced by the `gather_sdk.sh` script by grabbing only the final headers and static libraries needed for building the nros. Extract it in the repo root and lets you skip building the dotnet runtime repo. However I don't think it will work across toolchain upgrades, this means you must use the same docker container that was used when the SDK was built.
 
 If you get unexplainable issues, try to build the runtime yourself.
 
@@ -86,5 +87,7 @@ If you want to modify mono or the runtime you should check out the build steps i
 You'll most likely want to start working with the interpreter in `native/interpreter`, build it with `make`.
 You can build the C# examples in `managed` with `./managed_build.sh`
 For AOT `cd native/aot` then in order, `./build_aot.sh` and finally `make`.
+
+In case of build errors check out the github actions scripts which should be reproducible.
 
 The sd card zip in releases is built with `copy_sd_files.sh`
