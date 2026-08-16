@@ -344,7 +344,12 @@ void application_configure_mono()
         mono_trace_set_level_string("debug");
     }
 
+#if !DLSHIM_DISABLE
     mono_dl_fallback_register(dlshim_loadLibrary, dlshim_getSymbol, dlshim_closeLibrary, NULL);
+#else
+    #pragma message("dlshim disabled, make sure to build mono with direct-pinvoke for static linking of all extern functions")
+#endif
+
     mono_install_unhandled_exception_hook(Mono_unhandledExceptionHook, NULL);
 }
 

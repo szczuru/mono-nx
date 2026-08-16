@@ -70,7 +70,8 @@ CFLAGS	+=	$(INCLUDE) -D__SWITCH__ \
 			-I$(MONO_NX_ROOT)/artifacts/bin/mono/libnx.arm64.Debug/include/mono-2.0 \
 			-I$(MONO_NX_ROOT)/src/mono/ \
 			-I$(ICU_NX_INSTALL_DIR)/include \
-			-DU_DISABLE_RENAMING=1 
+			-DU_DISABLE_RENAMING=1 \
+			-DDLSHIM_DISABLE=1
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=c++17
 

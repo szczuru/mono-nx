@@ -22,14 +22,7 @@ int main(int argc, char *argv[])
     MonoDomain *domain = NULL;
     
     // Output from build_aot.sh
-    STATIC_MONO_SYM(mono_aot_module_System_Collections_Concurrent_info);
-    STATIC_MONO_SYM(mono_aot_module_System_Console_info);
-    STATIC_MONO_SYM(mono_aot_module_System_Diagnostics_DiagnosticSource_info);
-    STATIC_MONO_SYM(mono_aot_module_System_Private_CoreLib_info);
-    STATIC_MONO_SYM(mono_aot_module_System_Runtime_Serialization_Formatters_info);
-    STATIC_MONO_SYM(mono_aot_module_System_Runtime_info);
-    STATIC_MONO_SYM(mono_aot_module_System_Threading_Thread_info);
-    STATIC_MONO_SYM(mono_aot_module_program_info);
+    #include "mono_symbols.h"
 
     mono_jit_set_aot_mode(MONO_AOT_MODE_FULL);
 

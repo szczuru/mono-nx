@@ -40,8 +40,9 @@ export PATH=$PATH:$DEVKITPRO/devkitA64/bin/
 echo "build log" > mono_aot.log
 
 for file in output/*.dll; do
-    # TODO: try the direct-pinvoke option here to reduce the need for the dlshim
-    $MONO_COMPILER --path=output/ --aot=full,static,tool-prefix=aarch64-none-elf- $file >> mono_aot.log
+    # Note that direct-pinvoke removes the need for dlshim most of the time but it can cause linking errors if managed code contains pinvoke methods that are not present in our build (even if at runtime they are not used).
+    # In that case remove direct-pinvoke and reenable dlshim in the makefile
+    $MONO_COMPILER --path=output/ --aot=full,static,direct-icalls,direct-pinvoke,tool-prefix=aarch64-none-elf- $file >> mono_aot.log
 done
 
 echo copying outputs
@@ -51,5 +52,4 @@ cp output/*.dll romfs/
 echo copying full icu data file
 cp $ICU_NX_INSTALL_DIR/share/icu/77.1/icudt77l.dat romfs/
 
-echo Static-linking symbols:
-grep -r "Linking symbol:" mono_aot.log | sed "s/Linking symbol: '\([^']*\)'\./STATIC_MONO_SYM(\1);/"
+grep -r "Linking symbol:" mono_aot.log | sed "s/Linking symbol: '\([^']*\)'\./STATIC_MONO_SYM(\1);/" > source/mono_symbols.h
