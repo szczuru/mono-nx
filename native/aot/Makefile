@@ -71,7 +71,7 @@ CFLAGS	+=	$(INCLUDE) -D__SWITCH__ \
 			-I$(MONO_NX_ROOT)/src/mono/ \
 			-I$(ICU_NX_INSTALL_DIR)/include \
 			-DU_DISABLE_RENAMING=1 \
-			-DDLSHIM_DISABLE=1
+# -DDLSHIM_DISABLE=1
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=c++17
 
@@ -96,6 +96,11 @@ LIBS	:=  \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-hot_reload-stub-static.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-marshal-ilgen-static.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/_deps/fetchzlibng-build/libz.a \
+# --- SDL2 dla Phase1 AOT ---
+SOURCES		+=	../shared/dl_shim_sdl2
+CFLAGS		+=	-DDLSHIM_SDL2=1
+# wyłącz całkowity DISABLE shimów albo zostaw DISABLE i polegaj na direct-pinvoke + link
+LIBS		+=	`$(PREFIX)pkg-config --libs sdl2`
 			-pthread -lnx -lm -lstdc++
 
 #---------------------------------------------------------------------------------
