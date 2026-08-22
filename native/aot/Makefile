@@ -24,33 +24,14 @@ include $(DEVKITPRO)/libnx/switch_rules
 # DATA is a list of directories containing data files
 # INCLUDES is a list of directories containing header files
 # ROMFS is the directory containing data to be added to RomFS, relative to the Makefile (Optional)
-#
-# NO_ICON: if set to anything, do not use icon.
-# NO_NACP: if set to anything, no .nacp file is generated.
-# APP_TITLE is the name of the app stored in the .nacp file (Optional)
-# APP_AUTHOR is the author of the app stored in the .nacp file (Optional)
-# APP_VERSION is the version of the app stored in the .nacp file (Optional)
-# APP_TITLEID is the titleID of the app stored in the .nacp file (Optional)
-# ICON is the filename of the icon (.jpg), relative to the project folder.
-#   If not set, it attempts to use one of the following (in this order):
-#     - <Project name>.jpg
-#     - icon.jpg
-#     - <libnx folder>/default_icon.jpg
-#
-# CONFIG_JSON is the filename of the NPDM config file (.json), relative to the project folder.
-#   If not set, it attempts to use one of the following (in this order):
-#     - <Project name>.json
-#     - config.json
-#   If a JSON file is provided or autodetected, an ExeFS PFS0 (.nsp) is built instead
-#   of a homebrew executable (.nro). This is intended to be used for sysmodules.
-#   NACP building is skipped as well.
 #---------------------------------------------------------------------------------
 TARGET		:=	aot_example
 BUILD		:=	build
 SOURCES		:=	source \
 				../shared \
 				../shared/third_party \
-				../shared/third_party/ini
+				../shared/third_party/ini \
+				../shared/dl_shim_sdl2
 
 DATA		:=	data
 INCLUDES	:=	include \
@@ -66,12 +47,14 @@ ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 CFLAGS	:=	-g -Wall -O2 -ffunction-sections \
 			$(ARCH) $(DEFINES)
 
+# Bez DDLSHIM_DISABLE — potrzebujemy SDL2 przez dl_shim
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ \
 			-I$(MONO_NX_ROOT)/artifacts/bin/mono/libnx.arm64.Debug/include/mono-2.0 \
 			-I$(MONO_NX_ROOT)/src/mono/ \
 			-I$(ICU_NX_INSTALL_DIR)/include \
+			-I$(PORTLIBS)/include/SDL2 \
 			-DU_DISABLE_RENAMING=1 \
-# -DDLSHIM_DISABLE=1
+			-DDLSHIM_SDL2=1
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=c++17
 
@@ -80,12 +63,11 @@ LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*
 
 AOT_FILES := $(wildcard $(TOPDIR)/output/*.o)
 
-# Note that AOT build uses debugger-stub-static.a instead of debugger-static.a meaning it does not support debugging. For AOT debugging we also need to ask the AOT compiler to produce debuggable code.
-
+# Note that AOT build uses debugger-stub-static.a instead of debugger-static.a
 LIBS	:=  \
 			$(AOT_FILES) \
 			$(MONO_NX_ROOT)/artifacts/bin/native/net9.0-libnx-Debug-arm64/libSystem.IO.Compression.Native.a \
-  			$(MONO_NX_ROOT)/artifacts/bin/native/net9.0-libnx-Debug-arm64/libSystem.Globalization.Native.a \
+			$(MONO_NX_ROOT)/artifacts/bin/native/net9.0-libnx-Debug-arm64/libSystem.Globalization.Native.a \
 			$(MONO_NX_ROOT)/artifacts/bin/native/net9.0-libnx-Debug-arm64/libSystem.Native.a \
 			$(ICU_NX_INSTALL_DIR)/lib/libicui18n.a \
 			$(ICU_NX_INSTALL_DIR)/lib/libicuuc.a \
@@ -96,19 +78,14 @@ LIBS	:=  \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-hot_reload-stub-static.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/out/lib/libmono-component-marshal-ilgen-static.a \
 			$(MONO_NX_ROOT)/artifacts/obj/mono/libnx.arm64.Debug/_deps/fetchzlibng-build/libz.a \
-# --- SDL2 dla Phase1 AOT ---
-SOURCES		+=	../shared/dl_shim_sdl2
-CFLAGS		+=	-DDLSHIM_SDL2=1
-# wyłącz całkowity DISABLE shimów albo zostaw DISABLE i polegaj na direct-pinvoke + link
-LIBS		+=	`$(PREFIX)pkg-config --libs sdl2`
-			-pthread -lnx -lm -lstdc++
+			-pthread \
+			`$(PREFIX)pkg-config --libs sdl2` \
+			-lnx -lm -lstdc++
 
 #---------------------------------------------------------------------------------
-# list of directories containing libraries, this must be the top level containing
-# include and lib
+# list of directories containing libraries
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(PORTLIBS) $(LIBNX)
-
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
