@@ -23,6 +23,7 @@ mkdir -p output romfs source
 
 # --- entry: Crash host jeśli leży w managed/, inaczej stary program ---
     cp -v managed/game.recomp.dll output/
+    mkdir -p output/game/95005139715D6EF9/
     cp -v managed/game.recomp.dll output/game/95005139715D6EF9/
 ENTRY_DLL=""
 if [ -f managed/CrashBandicoot.Switch.dll ]; then
