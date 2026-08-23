@@ -13,7 +13,7 @@ public static class Program
     const int WinH = 540;
     const int SrcW = 512;
     const int SrcH = 240;
-    const string LogPath = "/aot_phase1_log.txt";
+    const string LogPath = "/switch/aot_phase1_log.txt";
 
     static void Log(string msg)
     {
