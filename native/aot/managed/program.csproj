@@ -5,8 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
     <SupportedPlatform Include="libnx" />
+    <Compile Include="program.cs" />
+    <Compile Include="SDL2.cs" />
   </ItemGroup>
 </Project>
