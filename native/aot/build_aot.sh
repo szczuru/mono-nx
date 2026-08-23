@@ -42,7 +42,7 @@ echo "build log" > mono_aot.log
 for file in output/*.dll; do
     # Note that direct-pinvoke removes the need for dlshim most of the time but it can cause linking errors if managed code contains pinvoke methods that are not present in our build (even if at runtime they are not used).
     # In that case remove direct-pinvoke and reenable dlshim in the makefile
-    $MONO_COMPILER --path=output/ --aot=full,static,direct-icalls,direct-pinvoke,tool-prefix=aarch64-none-elf- $file >> mono_aot.log
+    $MONO_COMPILER --path=output/ --aot=full,static,direct-icalls,tool-prefix=aarch64-none-elf- $file >> mono_aot.log
 done
 
 echo copying outputs
