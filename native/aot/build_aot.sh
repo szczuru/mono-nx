@@ -34,7 +34,7 @@ if [ -f managed/CrashBandicoot.Switch.dll ]; then
 fi
 
 if [ "$CRASH_MODE" = 1 ]; then
-    echo "Crash mode: Illink (no embedded fonts in Runtime) + AOT trimmed set"
+    echo "Crash mode: Illink + AOT (fonts from RomFS files)"
 
     cp -v managed/CrashBandicoot.Switch.dll output/
     cp -v managed/RecompOne.Runtime.dll output/
@@ -54,11 +54,8 @@ if [ "$CRASH_MODE" = 1 ]; then
         --trim-mode link \
         -a "$ENTRY"
 
-    # Fonty BIOS na RomFS (KromFont czyta z dysku)
     if [ -f managed/font1.raw ]; then cp -v managed/font1.raw romfs/; fi
     if [ -f managed/font2.raw ]; then cp -v managed/font2.raw romfs/; fi
-    if [ -f romfs_fonts/font1.raw ]; then cp -v romfs_fonts/font1.raw romfs/; fi
-    if [ -f romfs_fonts/font2.raw ]; then cp -v romfs_fonts/font2.raw romfs/; fi
 else
     echo "Example mode: program.csproj + Illink"
     dotnet build managed/program.csproj
@@ -82,7 +79,6 @@ export PATH=$PATH:$DEVKITPRO/devkitA64/bin/
 
 echo "build log" > mono_aot.log
 
-# tylko to, co Illink zostawił w output/ — BEZ direct-pinvoke
 for file in output/*.dll; do
     [ -f "$file" ] || continue
     echo "AOT $file"
@@ -111,4 +107,4 @@ grep -r "Linking symbol:" mono_aot.log \
     > source/mono_symbols.h
 
 echo "build_aot.sh done"
-ls -la output/*.dll output/*.o 2>/dev/null | head -n 40
+ls -la output/*.dll 2>/dev/null | head -n 30
