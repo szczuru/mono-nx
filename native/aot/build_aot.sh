@@ -24,17 +24,30 @@ mkdir -p output romfs source
 LIB_ROOT=$MONO_NX_ROOT/artifacts/bin/mono/libnx.arm64.Debug/
 FRAMEWORK_ROOT=$MONO_NX_ROOT/artifacts/bin/runtime/net9.0-libnx-Debug-arm64/
 
-ILLINK=$MONO_NX_ROOT/artifacts/bin/Mono.Linker/Debug/net9.0/illink.dll
-ILLINK_CFG=$MONO_NX_ROOT/src/mono/System.Private.CoreLib/src/ILLink/ILLink.Descriptors.xml
-ILLINK_CFG1=$MONO_NX_ROOT/src/mono/System.Private.CoreLib/src/ILLink/ILLink.LinkAttributes.xml
-
 CRASH_MODE=0
 if [ -f managed/CrashBandicoot.Switch.dll ]; then
     CRASH_MODE=1
 fi
 
 if [ "$CRASH_MODE" = 1 ]; then
-    echo "Crash mode: Illink + AOT (fonts from RomFS files)"
+    echo "Crash mode: NO Illink (Cecil crash). Selective AOT only."
+
+    if [ ! -d "$FRAMEWORK_ROOT" ]; then
+        echo "Missing FRAMEWORK_ROOT: $FRAMEWORK_ROOT"
+        exit 1
+    fi
+
+    # BCL na RomFS (metadata); AOT tylko wybrana lista poniżej
+    cp -v "$FRAMEWORK_ROOT"/*.dll output/ 2>/dev/null || true
+    if [ -d "$LIB_ROOT" ]; then
+        for f in "$LIB_ROOT"/*.dll; do
+            [ -f "$f" ] || continue
+            base=$(basename "$f")
+            if [ ! -f "output/$base" ]; then
+                cp -v "$f" output/
+            fi
+        done
+    fi
 
     cp -v managed/CrashBandicoot.Switch.dll output/
     cp -v managed/RecompOne.Runtime.dll output/
@@ -42,22 +55,19 @@ if [ "$CRASH_MODE" = 1 ]; then
         cp -v managed/game.recomp.dll output/
     fi
 
-    ENTRY=output/CrashBandicoot.Switch.dll
-
-    dotnet "$ILLINK" \
-        -x "$ILLINK_CFG" \
-        -x "$ILLINK_CFG1" \
-        --feature System.Resources.UseSystemResourceKeys true \
-        -d "$LIB_ROOT" \
-        -d "$FRAMEWORK_ROOT" \
-        -d output \
-        --trim-mode link \
-        -a "$ENTRY"
-
     if [ -f managed/font1.raw ]; then cp -v managed/font1.raw romfs/; fi
     if [ -f managed/font2.raw ]; then cp -v managed/font2.raw romfs/; fi
+
+    if [ ! -f output/System.Private.CoreLib.dll ]; then
+        echo "ERROR: System.Private.CoreLib.dll missing"
+        exit 1
+    fi
 else
     echo "Example mode: program.csproj + Illink"
+    ILLINK=$MONO_NX_ROOT/artifacts/bin/Mono.Linker/Debug/net9.0/illink.dll
+    ILLINK_CFG=$MONO_NX_ROOT/src/mono/System.Private.CoreLib/src/ILLink/ILLink.Descriptors.xml
+    ILLINK_CFG1=$MONO_NX_ROOT/src/mono/System.Private.CoreLib/src/ILLink/ILLink.LinkAttributes.xml
+
     dotnet build managed/program.csproj
     ENTRY_DLL=managed/bin/Debug/net9.0/program.dll
     if [ ! -f "$ENTRY_DLL" ]; then
@@ -79,17 +89,59 @@ export PATH=$PATH:$DEVKITPRO/devkitA64/bin/
 
 echo "build log" > mono_aot.log
 
-for file in output/*.dll; do
-    [ -f "$file" ] || continue
-    echo "AOT $file"
-    "$MONO_COMPILER" --path=output/ \
-        --aot=full,static,direct-icalls,tool-prefix=aarch64-none-elf- \
-        "$file" >> mono_aot.log 2>&1 || {
-            echo "AOT failed for $file"
-            tail -n 80 mono_aot.log
-            exit 1
-        }
-done
+if [ "$CRASH_MODE" = 1 ]; then
+    # Tylko to, czego używa host z logów interpretera + corlib.
+    # NIE AOT-uj całego BCL → unikasz R_AARCH64_CALL26.
+    AOT_LIST="
+        System.Private.CoreLib.dll
+        System.Runtime.dll
+        System.Console.dll
+        System.Runtime.InteropServices.dll
+        System.Threading.dll
+        System.Threading.Thread.dll
+        System.Collections.dll
+        System.Linq.dll
+        System.Memory.dll
+        System.Numerics.Vectors.dll
+        System.Text.Json.dll
+        System.IO.FileSystem.dll
+        System.Runtime.Numerics.dll
+        netstandard.dll
+        RecompOne.Runtime.dll
+        CrashBandicoot.Switch.dll
+    "
+
+    for name in $AOT_LIST; do
+        file="output/$name"
+        if [ ! -f "$file" ]; then
+            echo "SKIP missing $file"
+            continue
+        fi
+        echo "AOT $file"
+        "$MONO_COMPILER" --path=output/ \
+            --aot=full,static,direct-icalls,tool-prefix=aarch64-none-elf- \
+            "$file" >> mono_aot.log 2>&1 || {
+                echo "AOT failed for $file"
+                tail -n 80 mono_aot.log
+                exit 1
+            }
+    done
+
+    # Usuń przypadkowe .o z wcześniejszych prób poza listą (nie powinno być)
+    # Linkuje Makefile tylko to, co jest jako .o obok — zostawiamy tylko AOT_LIST .o
+else
+    for file in output/*.dll; do
+        [ -f "$file" ] || continue
+        echo "AOT $file"
+        "$MONO_COMPILER" --path=output/ \
+            --aot=full,static,direct-icalls,tool-prefix=aarch64-none-elf- \
+            "$file" >> mono_aot.log 2>&1 || {
+                echo "AOT failed for $file"
+                tail -n 80 mono_aot.log
+                exit 1
+            }
+    done
+fi
 
 echo copying outputs
 cp output/*.dll romfs/
@@ -107,4 +159,5 @@ grep -r "Linking symbol:" mono_aot.log \
     > source/mono_symbols.h
 
 echo "build_aot.sh done"
-ls -la output/*.dll 2>/dev/null | head -n 30
+echo "AOT objects:"
+ls -la output/*.o 2>/dev/null
