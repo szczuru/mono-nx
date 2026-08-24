@@ -105,6 +105,7 @@ if [ "$CRASH_MODE" = 1 ]; then
         System.Numerics.Vectors.dll
         System.Text.Json.dll
         System.IO.FileSystem.dll
+        System.IO.Pipelines.dll
         System.Runtime.Numerics.dll
         netstandard.dll
         RecompOne.Runtime.dll
