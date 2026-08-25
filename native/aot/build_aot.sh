@@ -30,14 +30,13 @@ if [ -f managed/CrashBandicoot.Switch.dll ]; then
 fi
 
 if [ "$CRASH_MODE" = 1 ]; then
-    echo "Crash mode: NO Illink (Cecil crash). Selective AOT only."
+    echo "Crash mode: selective AOT (no Illink)"
 
     if [ ! -d "$FRAMEWORK_ROOT" ]; then
         echo "Missing FRAMEWORK_ROOT: $FRAMEWORK_ROOT"
         exit 1
     fi
 
-    # BCL na RomFS (metadata); AOT tylko wybrana lista poniżej
     cp -v "$FRAMEWORK_ROOT"/*.dll output/ 2>/dev/null || true
     if [ -d "$LIB_ROOT" ]; then
         for f in "$LIB_ROOT"/*.dll; do
@@ -60,6 +59,11 @@ if [ "$CRASH_MODE" = 1 ]; then
 
     if [ ! -f output/System.Private.CoreLib.dll ]; then
         echo "ERROR: System.Private.CoreLib.dll missing"
+        exit 1
+    fi
+    if [ ! -f output/System.IO.Pipelines.dll ]; then
+        echo "ERROR: System.IO.Pipelines.dll missing in framework copy"
+        ls output/System.IO* 2>/dev/null || true
         exit 1
     fi
 else
@@ -90,33 +94,31 @@ export PATH=$PATH:$DEVKITPRO/devkitA64/bin/
 echo "build log" > mono_aot.log
 
 if [ "$CRASH_MODE" = 1 ]; then
-    # Tylko to, czego używa host z logów interpretera + corlib.
-    # NIE AOT-uj całego BCL → unikasz R_AARCH64_CALL26.
     AOT_LIST="
-        System.Private.CoreLib.dll
-        System.Runtime.dll
-        System.Console.dll
-        System.Runtime.InteropServices.dll
-        System.Threading.dll
-        System.Threading.Thread.dll
-        System.Collections.dll
-        System.Linq.dll
-        System.Memory.dll
-        System.Numerics.Vectors.dll
-        System.Text.Json.dll
-        System.IO.FileSystem.dll
-        System.IO.Pipelines.dll
-        System.Runtime.Numerics.dll
-        netstandard.dll
-        RecompOne.Runtime.dll
-        CrashBandicoot.Switch.dll
-    "
+System.Private.CoreLib.dll
+System.Runtime.dll
+System.Console.dll
+System.Runtime.InteropServices.dll
+System.Threading.dll
+System.Threading.Thread.dll
+System.Collections.dll
+System.Linq.dll
+System.Memory.dll
+System.Numerics.Vectors.dll
+System.Text.Json.dll
+System.IO.FileSystem.dll
+System.IO.Pipelines.dll
+System.Runtime.Numerics.dll
+netstandard.dll
+RecompOne.Runtime.dll
+CrashBandicoot.Switch.dll
+"
 
     for name in $AOT_LIST; do
         file="output/$name"
         if [ ! -f "$file" ]; then
-            echo "SKIP missing $file"
-            continue
+            echo "ERROR: required for AOT but missing: $file"
+            exit 1
         fi
         echo "AOT $file"
         "$MONO_COMPILER" --path=output/ \
@@ -126,10 +128,12 @@ if [ "$CRASH_MODE" = 1 ]; then
                 tail -n 80 mono_aot.log
                 exit 1
             }
+        if [ ! -f "output/${name}.o" ]; then
+            echo "ERROR: AOT did not produce output/${name}.o"
+            exit 1
+        fi
+        echo "  -> output/${name}.o OK ($(wc -c < output/${name}.o) bytes)"
     done
-
-    # Usuń przypadkowe .o z wcześniejszych prób poza listą (nie powinno być)
-    # Linkuje Makefile tylko to, co jest jako .o obok — zostawiamy tylko AOT_LIST .o
 else
     for file in output/*.dll; do
         [ -f "$file" ] || continue
@@ -143,6 +147,9 @@ else
             }
     done
 fi
+
+echo "AOT object files:"
+ls -la output/*.o
 
 echo copying outputs
 cp output/*.dll romfs/
@@ -160,5 +167,3 @@ grep -r "Linking symbol:" mono_aot.log \
     > source/mono_symbols.h
 
 echo "build_aot.sh done"
-echo "AOT objects:"
-ls -la output/*.o 2>/dev/null
